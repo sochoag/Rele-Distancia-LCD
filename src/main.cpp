@@ -9,10 +9,10 @@ LiquidCrystal_I2C lcd(0x27,16,2);
 
 // VARIABLES GLOBALES
 
-byte set = 8, reset = 9, confirm = 10, rele = 13, echo = 3, trig = 2;
+byte set = 9, reset = 10, confirm = 8, rele = A0, echo = 3, trig = 2;
 byte indice = 0;
 bool modo = false;
-unsigned int debounceTime = 100;
+unsigned int debounceTime = 250;
 
 long duration;
 float dactual, d1=0, d2=0;
@@ -47,8 +47,8 @@ void pantallaPrincipal()
 void segundaPantalla()
 {
   lcd.clear();     
-  lcd.setCursor(3, 0); 
-  lcd.print("DA:    CM");
+  lcd.setCursor(4, 0); 
+  lcd.print("DA:  CM");
 
   lcd.setCursor(0, 1);
   lcd.print("D1:");
@@ -78,7 +78,7 @@ bool menu()
 {
   while((indice != 0) | (!modo))
   {
-    if(!digitalRead(confirm))
+    if(digitalRead(confirm))
     {
       delay(debounceTime);
       indice = indice >= 2 ? 0 : indice+1;
@@ -93,37 +93,33 @@ bool menu()
       case 0: 
         lcd.setCursor(7,0); 
         lcd.print("<");
-        if(!digitalRead(set))
+        if(digitalRead(set))
         {
+          delay(debounceTime);
           d1 = dactual;
-        }
-        if(!digitalRead(reset))
-        {
-          d1 = 0;
         }
         d1Int = int(d1);
         break;
       case 1: 
         lcd.setCursor(7,1); 
         lcd.print("<"); 
-        if(!digitalRead(set))
+        if(digitalRead(set))
         {
+          delay(debounceTime);
           d2 = dactual;
-        }
-        if(!digitalRead(reset))
-        {
-          d2 = 0;
         }
         d2Int = int(d2);
         break;
       case 2: 
           lcd.setCursor(12,0); lcd.print(">");
-          if(!digitalRead(set))
+          if(digitalRead(set))
           {
+            delay(debounceTime);
             modo = true;
           }
-          if(!digitalRead(reset))
+          if(digitalRead(reset))
           {
+            delay(debounceTime);
             modo = false;
           }
         break;
@@ -131,11 +127,11 @@ bool menu()
 
     getDistance();
     lcd.setCursor(12,1);
-    lcd.print(dactualInt < 9 ? "0"+String(dactualInt) : dactualInt);
+    lcd.print(dactualInt <= 9 ? "0"+String(dactualInt) : dactualInt);
     lcd.setCursor(3,0);
-    lcd.print(d1Int < 9 ? "0"+String(d1Int) : d1Int);
+    lcd.print(d1Int <= 9 ? "0"+String(d1Int) : d1Int);
     lcd.setCursor(3,1);
-    lcd.print(d2Int < 9 ? "0"+String(d2Int) : d2Int);
+    lcd.print(d2Int <= 9 ? "0"+String(d2Int) : d2Int);
     lcd.setCursor(15,0);
     lcd.print(modo ? "I":"C");
     lcd.display();
@@ -143,6 +139,7 @@ bool menu()
   
   EEPROM.put(0,d1);
   EEPROM.put(4,d2);
+  EEPROM.put(8,2);
 
   return true;
 }
@@ -157,9 +154,11 @@ void setup()
   pinMode(set, INPUT_PULLUP);
   pinMode(reset, INPUT_PULLUP);
   pinMode(confirm, INPUT_PULLUP);
+  digitalWrite(rele,1);
 
   EEPROM.get(0, d1);
   EEPROM.get(4, d2);
+  EEPROM.get(8, indice);
   d1Int = int(d1);
   d2Int = int(d2);
 
@@ -175,24 +174,34 @@ void setup()
 
 void loop() 
 {
-  if(!digitalRead(reset))
+  if(digitalRead(reset))
   {
     delay(debounceTime);
+    digitalWrite(rele,1);
     resetFunc();
   }
 
   getDistance();
-  lcd.setCursor(6,0);
-  lcd.print(dactual >= 99.99 ? 99.99 : dactual);
+  lcd.setCursor(7,0);
+
+  if (dactualInt <= 9)
+  {
+    lcd.print("0" + String(dactualInt));
+  }
+  else
+  {
+    lcd.print(dactualInt);
+  }
+
   lcd.display();
 
   if(dactual > d2 || bandera)
   {
-    digitalWrite(rele, HIGH);
+    digitalWrite(rele, 0);
     bandera = true;
     if(dactual < d1)
     {
-      digitalWrite(rele, LOW);
+      digitalWrite(rele, 1);
       bandera = false;
     }
   }
